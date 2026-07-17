@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { MongoClient, Collection } from 'mongodb';
 import { 
   User, Workspace, Project, Task, Comment, Notification, Snippet, ApiDoc, Resource, Activity 
 } from '../../src/types.js';
@@ -294,9 +295,57 @@ const initialDb: DbSchema = {
 
 class JsonDb {
   private data: DbSchema;
+  private mongoClient: MongoClient | null = null;
+  private mongoCollection: Collection<any> | null = null;
+  private isMongoConnected: boolean = false;
 
   constructor() {
     this.data = this.load();
+  }
+
+  // Connects to MongoDB, retrieves the latest state, and sets up sync
+  public async connectMongo(): Promise<void> {
+    const mongoUri = process.env.MONGODB_URI;
+    if (!mongoUri) {
+      console.log('[DB Sync]: MONGODB_URI env variable is not set. Falling back to local db.json.');
+      return;
+    }
+
+    try {
+      console.log('[DB Sync]: Connecting to MongoDB...');
+      this.mongoClient = new MongoClient(mongoUri);
+      await this.mongoClient.connect();
+      
+      const dbName = process.env.MONGODB_DB_NAME || 'devboard';
+      const dbInstance = this.mongoClient.db(dbName);
+      this.mongoCollection = dbInstance.collection('state');
+      
+      this.isMongoConnected = true;
+      console.log(`[DB Sync]: Successfully connected to MongoDB database: "${dbName}"`);
+
+      // Try to load the existing database state from the collection
+      const existingState = await this.mongoCollection.findOne({ _id: 'main_state' as any });
+      
+      if (existingState) {
+        console.log('[DB Sync]: Found existing database state in MongoDB. Syncing memory cache...');
+        // Cast and set the internal state, ignoring the MongoDB specific _id field
+        const { _id, ...cleanState } = existingState;
+        this.data = cleanState as unknown as DbSchema;
+        // Keep the local fallback db.json in sync
+        this.save(this.data);
+      } else {
+        console.log('[DB Sync]: No existing state found in MongoDB. Initializing with local/default data...');
+        await this.mongoCollection.updateOne(
+          { _id: 'main_state' as any },
+          { $set: this.data as any },
+          { upsert: true }
+        );
+        console.log('[DB Sync]: Local database state successfully pushed to MongoDB!');
+      }
+    } catch (error) {
+      console.error('[DB Sync]: Failed to initialize MongoDB connection:', error);
+      console.log('[DB Sync]: Continuing with local memory/file storage fallback...');
+    }
   }
 
   private load(): DbSchema {
@@ -327,6 +376,17 @@ class JsonDb {
   public update(updater: (data: DbSchema) => void): void {
     updater(this.data);
     this.save(this.data);
+
+    // Sync asynchronously to MongoDB if connected
+    if (this.isMongoConnected && this.mongoCollection) {
+      this.mongoCollection.updateOne(
+        { _id: 'main_state' as any },
+        { $set: this.data as any },
+        { upsert: true }
+      ).catch((err) => {
+        console.error('[DB Sync]: Async background sync to MongoDB failed:', err);
+      });
+    }
   }
 }
 

@@ -180,7 +180,7 @@ export default function ResourceManager({ projectId }: ResourceManagerProps) {
                   onChange={(e) => setNewContent(e.target.value)}
                   placeholder="Paste database ports, secrets schema details, or deployment logs..."
                   className="w-full h-28 px-3 py-2 bg-[#050506] border border-zinc-800 rounded-lg text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono resize-none leading-relaxed"
-                  required={newType !== 'link'}
+                  required
                 />
               </div>
             )}

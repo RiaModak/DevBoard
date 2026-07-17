@@ -239,7 +239,11 @@ export default function ApiPlanner({ projectId }: ApiPlannerProps) {
                   <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${getMethodBadgeColor(d.method)}`}>
                     {d.method}
                   </span>
-                  {d.isAuthRequired && <Lock className="w-3 h-3 text-zinc-500" title="Security token required" />}
+                  {d.isAuthRequired && (
+                    <span title="Security token required">
+                      <Lock className="w-3 h-3 text-zinc-500" />
+                    </span>
+                  )}
                 </div>
                 <span className="font-mono text-zinc-200 font-bold line-clamp-1 truncate">{d.endpoint}</span>
                 <span className="text-[10px] text-zinc-500 line-clamp-2">{d.description}</span>

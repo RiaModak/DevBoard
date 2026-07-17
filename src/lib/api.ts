@@ -13,10 +13,17 @@ const API_BASE = '/api/v1';
 async function fetchJson<T>(url: string, options: RequestInit = {}): Promise<T> {
   // Always send cookies
   options.credentials = 'include';
-  options.headers = {
+  const token = localStorage.getItem('devboard_token');
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...options.headers,
+    ...((options.headers as Record<string, string>) || {}),
   };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  options.headers = headers;
 
   const response = await fetch(url, options);
   const data = await response.json();
@@ -31,20 +38,29 @@ async function fetchJson<T>(url: string, options: RequestInit = {}): Promise<T> 
 export const api = {
   // --- AUTHENTICATION ---
   async login(email: string, password: string) {
-    return fetchJson<{ success: boolean; user: User; token: string }>(`${API_BASE}/auth/login`, {
+    const res = await fetchJson<{ success: boolean; user: User; token: string }>(`${API_BASE}/auth/login`, {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
+    if (res.token) {
+      localStorage.setItem('devboard_token', res.token);
+    }
+    return res;
   },
 
   async register(name: string, email: string, password: string) {
-    return fetchJson<{ success: boolean; user: User; token: string }>(`${API_BASE}/auth/register`, {
+    const res = await fetchJson<{ success: boolean; user: User; token: string }>(`${API_BASE}/auth/register`, {
       method: 'POST',
       body: JSON.stringify({ name, email, password }),
     });
+    if (res.token) {
+      localStorage.setItem('devboard_token', res.token);
+    }
+    return res;
   },
 
   async logout() {
+    localStorage.removeItem('devboard_token');
     return fetchJson<{ success: boolean }>(`${API_BASE}/auth/logout`, {
       method: 'POST',
     });
