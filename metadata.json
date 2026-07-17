@@ -1,0 +1,8 @@
+{
+  "name": "DevBoard",
+  "description": "DevBoard is a collaborative developer-focused project management SaaS platform featuring Kanban boards, a code snippet vault, an API documentation planner, developer resource storage, team collaboration, and an AI-powered assistant.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
